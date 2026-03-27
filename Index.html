@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- LINEの中で動かすためのLIFFライブラリ -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <title>家計簿入力</title>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      padding: 20px; 
+      margin: 0;
+      background-color: #f6f7f9; 
+    }
+    .form-group { margin-bottom: 20px; }
+    label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: bold; 
+      color: #333; 
+    }
+    input[type="text"], input[type="number"], input[type="date"], select { 
+      width: 100%; 
+      padding: 12px; 
+      border: 1px solid #ddd; 
+      border-radius: 8px; 
+      box-sizing: border-box; 
+      font-size: 16px; 
+      background-color: #fff;
+    }
+    button { 
+      width: 100%; 
+      padding: 16px; 
+      background-color: #06C755; /* LINEグリーン */
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      font-size: 18px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      margin-top: 10px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    button:disabled { 
+      background-color: #cccccc; 
+      cursor: not-allowed; 
+      box-shadow: none;
+    }
+    .status { 
+      margin-top: 20px; 
+      text-align: left; 
+      font-weight: bold; 
+      color: #333;
+      font-size: 16px;
+      white-space: pre-wrap;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      display: none;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      background-color: #fff;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      margin: 0;
+      margin-right: 12px;
+    }
+    .checkbox-group label {
+      margin-bottom: 0;
+      font-weight: normal;
+      color: #333;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="form-group">
+    <label>📅 支払日</label>
+    <input type="date" id="date">
+  </div>
+  
+  <div class="form-group">
+    <label>📌 費目</label>
+    <select id="category">
+      <!-- 今回ヒアリングした費目をセット -->
+      <optgroup label="毎月の予算">
+        <option value="食費">食費</option>
+        <option value="習い事">習い事</option>
+      </optgroup>
+      <optgroup label="半年ごとの予算">
+        <option value="日用品のお金">日用品のお金</option>
+        <option value="遊び等">遊び等</option>
+        <option value="車関係">車関係</option>
+        <option value="子供のお金">子供のお金</option>
+        <option value="貯金(家の備品購入)">貯金(家の備品購入)</option>
+        <option value="固定資産税">固定資産税</option>
+        <option value="学校用品と預かり費用">学校用品と預かり費用</option>
+        <option value="長期休みの食費">長期休みの食費</option>
+        <option value="火災保険">火災保険</option>
+        <option value="白アリ">白アリ</option>
+        <option value="慶弔費">慶弔費</option>
+      </optgroup>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label>💰 金額 (円、数字のみ)</label>
+    <input type="number" id="amount" placeholder="例: 1500" inputmode="numeric">
+  </div>
+  
+  <div class="form-group">
+    <label>🛒 購入先</label>
+    <input type="text" id="shop" placeholder="例: イオン（省略可）">
+  </div>
+  
+  <div class="form-group">
+    <label>📝 詳細</label>
+    <input type="text" id="details" placeholder="例: お肉、洗剤など（省略可）">
+  </div>
+  
+  <div class="form-group">
+    <label>👛 支払元</label>
+    <select id="wallet">
+      <option value="家計の財布">家計の財布から（通常）</option>
+      <option value="夫の財布">👨 夫の財布で立て替え</option>
+      <option value="妻の財布">👩 妻の財布で立て替え</option>
+    </select>
+  </div>
+  
+  <button id="submitBtn" onclick="submitForm()">登録する</button>
+  
+  <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 20px;">
+    <button id="balanceBtn" onclick="checkBalances()" style="background-color: #fff; color: #333; border: 1px solid #aaa; margin-top: 0;">📊 現在の残高・立て替え額を見る</button>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button id="settleHusbandBtn" onclick="settle('夫の財布')" style="background-color: #fff; color: #0066cc; border: 1px solid #0066cc; font-size: 14px; padding: 12px;">👨 夫の精算完了</button>
+      <button id="settleWifeBtn" onclick="settle('妻の財布')" style="background-color: #fff; color: #cc0066; border: 1px solid #cc0066; font-size: 14px; padding: 12px;">👩 妻の精算完了</button>
+    </div>
+  </div>
+  
+  <div id="status" class="status"></div>
+
+  <script>
+    // 画面が開かれた時の処理
+    document.addEventListener("DOMContentLoaded", function() {
+      // 日付の初期値を最初から【今日】にセットしておく
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
+      
+      // LIFFの初期化（LINE内で動かすおまじない）
+      if (typeof liff !== 'undefined') {
+        // ※後で本物のLIFF IDを入れます。今は準備用です。
+        liff.init({ liffId: "2009616570-a2PwA4yR" }).catch(err => console.error(err));
+      }
+    });
+
+    // 登録ボタンが押された時の処理
+    function submitForm() {
+      const btn = document.getElementById('submitBtn');
+      const statusElement = document.getElementById('status');
+      
+      // 入力されたデータをまとめる
+      const data = {
+        date: document.getElementById('date').value,
+        category: document.getElementById('category').value,
+        amount: document.getElementById('amount').value,
+        shop: document.getElementById('shop').value,
+        details: document.getElementById('details').value,
+        wallet: document.getElementById('wallet').value
+      };
+      
+      // 金額が空ならエラー
+      if (!data.amount) {
+        alert("金額を入力してください🙇‍♂️");
+        return;
+      }
+
+      // 二度押し防止
+      btn.disabled = true;
+      btn.innerText = "登録中...";
+      statusElement.style.display = "block";
+      statusElement.innerText = "登録しています...";
+      
+      // ガス（GAS）側の「processForm」という機能を呼び出してデータを渡す
+      google.script.run
+        .withSuccessHandler(function(response) {
+          // 成功した時の処理
+          statusElement.innerText = response;
+          btn.innerText = "完了";
+          
+          // LINE上（LIFF）で開いている場合は、1.5秒後に自動で画面を閉じる
+          if (typeof liff !== 'undefined' && liff.isInClient()) {
+            setTimeout(() => {
+               liff.closeWindow();
+            }, 1500);
+          } else {
+             // ブラウザのテスト用: 2秒後にフォームをリセットする
+             setTimeout(() => {
+                document.getElementById('amount').value = '';
+                document.getElementById('shop').value = '';
+                document.getElementById('details').value = '';
+                document.getElementById('wallet').value = '家計の財布';
+                btn.disabled = false;
+                btn.innerText = "登録する";
+                statusElement.style.display = "none";
+             }, 2000);
+          }
+        })
+        .withFailureHandler(function(error) {
+          // 失敗した時の処理
+          alert("通信エラーが発生しました: " + error.message);
+          btn.disabled = false;
+          btn.innerText = "登録する";
+          statusElement.style.display = "none";
+        })
+        .processForm(data); // GASにデータを送信
+    }
+
+    // 残高一覧を確認する機能
+    function checkBalances() {
+      const btn = document.getElementById('balanceBtn');
+      const statusElement = document.getElementById('status');
+      
+      btn.disabled = true;
+      btn.innerText = "読込中...";
+      statusElement.style.display = "block";
+      statusElement.innerText = "最新の残高を取得しています...\n（少々お待ちください）";
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          statusElement.innerText = response;
+          btn.disabled = false;
+          btn.innerText = "📊 現在の残高一覧を見る";
+        })
+        .withFailureHandler(function(error) {
+          statusElement.innerText = "エラーが発生しました: " + error.message;
+          btn.disabled = false;
+          btn.innerText = "📊 現在の残高一覧を見る";
+        })
+        .getBalances();
+    }
+
+    // 精算機能
+    function settle(person) {
+      if (!confirm(`未清算の「${person}」の立て替えをすべて現金で渡し、「精算済」にしますか？`)) {
+        return;
+      }
+      
+      const statusElement = document.getElementById('status');
+      statusElement.style.display = "block";
+      statusElement.innerText = "精算処理を行っています...\n（少々お待ちください）";
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          statusElement.innerText = response;
+        })
+        .withFailureHandler(function(error) {
+          statusElement.innerText = "エラーが発生しました: " + error.message;
+        })
+        .settleReimbursement(person);
+    }
+  </script>
+</body>
+</html>
